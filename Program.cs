@@ -1,6 +1,3 @@
-// ========================================
-// 1. Program.cs
-// ========================================
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -10,17 +7,16 @@ using MyBlogApi.Services;
 using MyBlogApi;
 using MyBlogApi.Data;
 using MyBlogApi.Models;
-using MyBlogApi.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container
 builder.Services.AddControllers();
+builder.Services.AddScoped<IFileStorageService, FileStorageService>();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddSingleton<IApplicationStateService, ApplicationStateService>();
 builder.Services.AddHostedService<StartupTrackingService>();
-
 
 // Configure Entity Framework with PostgreSQL
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
@@ -60,7 +56,7 @@ builder.Services.AddAuthentication(options =>
     };
 });
 
-// Register our custom services
+// Register custom services
 builder.Services.AddScoped<TokenService>();
 
 // Add CORS
@@ -88,10 +84,42 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
+// Configure static files - but first ensure wwwroot exists
+var wwwrootPath = app.Environment.WebRootPath ?? Path.Combine(app.Environment.ContentRootPath, "wwwroot");
+
+// Create wwwroot if it doesn't exist
+if (!Directory.Exists(wwwrootPath))
+{
+    Directory.CreateDirectory(wwwrootPath);
+    Console.WriteLine($"Created wwwroot directory at: {wwwrootPath}");
+}
+
+// Enable static file serving
+app.UseStaticFiles();
+
+// Create upload directories with proper error handling
+try 
+{
+    var uploadPath = Path.Combine(wwwrootPath, "uploads", "posts");
+    if (!Directory.Exists(uploadPath))
+    {
+        Directory.CreateDirectory(uploadPath);
+        Console.WriteLine($"Created upload directory at: {uploadPath}");
+    }
+}
+catch (Exception ex)
+{
+    // Log the error
+    app.Logger.LogError(ex, "Failed to create upload directory");
+}
+
 // Order matters! Authentication must come before Authorization
 app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+
+// Startup message
+app.Logger.LogInformation("Application started. Static files will be served from: {Path}", wwwrootPath);
 
 app.Run();

@@ -442,3 +442,12 @@ appsettings.Production.json
 appsettings.*.json
 !appsettings.json
 !appsettings.Example.json
+
+#ignore uploaded images
+wwwroot/uploads/
+uploads/
+*.jpg
+*.jpeg
+*.png
+*.gif
+*.webp
